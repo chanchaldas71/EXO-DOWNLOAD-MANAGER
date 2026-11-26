@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Left converging stream (Cyan - Wi-Fi) -->
+    <path
+        android:fillColor="#22D3EE"
+        android:pathData="M29,28 L37,28 L49,54 L41,54 Z" />
+    <!-- Right converging stream (Emerald - Ethernet) -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M71,28 L79,28 L67,54 L59,54 Z" />
+    <!-- Center stream + unified bold download arrow (Crisp White + Amber accent bar) -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M50,26 L58,26 L58,58 L71,58 L54,80 L37,58 L50,58 Z" />
+    <!-- Base velocity bar (Amber - 5G Cellular) -->
+    <path
+        android:fillColor="#FB923C"
+        android:pathData="M34,82 L74,82 L74,87 L34,87 Z" />
+</vector>

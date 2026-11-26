@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">Plexo</string>
+    <string name="tagline">Multi-Network Bonding Downloader</string>
+    <string name="cd_networks_button">Manage active networks</string>
+    <string name="cd_settings_button">Open settings</string>
+    <string name="cd_new_download">Add new download</string>
+    <string name="cd_back">Navigate back</string>
+    <string name="cd_pause">Pause download</string>
+    <string name="cd_resume">Resume download</string>
+    <string name="cd_delete">Delete download</string>
+    <string name="cd_rename_network">Rename network adapter</string>
+    <string name="notification_channel_active">Active Downloads</string>
+    <string name="notification_channel_active_desc">Ongoing progress and controls for multi-network downloads</string>
+    <string name="notification_channel_alerts">Download Alerts</string>
+    <string name="notification_channel_alerts_desc">Notifications for completed or failed downloads</string>
+    <string name="action_pause_all">Pause All</string>
+    <string name="action_resume_all">Resume All</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="empty_downloads_title">No downloads yet</string>
+    <string name="empty_downloads_body">Tap + or share any link from your browser to bond Wi-Fi, 5G, and Ethernet into one high-speed stream.</string>
+    <string name="metered_warning">Metered connection — disabled by default to protect mobile data</string>
+    <string name="error_no_range">Server doesn\'t allow split downloads — using single stream</string>
+    <string name="error_storage_full">Storage full — free up space and resume</string>
+    <string name="error_link_expired">Link expired — paste a refreshed URL to resume</string>
+</resources>

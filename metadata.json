@@ -1,0 +1,6 @@
+{
+  "name": "Plexo",
+  "description": "Multi-network bonding download manager for Android that splits files into byte ranges and downloads concurrently across Wi-Fi, 5G/4G Cellular, and Ethernet.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
