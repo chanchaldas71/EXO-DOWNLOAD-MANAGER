@@ -87,6 +87,7 @@ class DownloadEngine(
     private val speedLimiter = SpeedLimiter()
 
     private val activeSessions = ConcurrentHashMap<Long, ActiveDownloadSession>()
+    private val startingDownloadIds = ConcurrentHashMap.newKeySet<Long>()
     private val manualBypassIds = ConcurrentHashMap.newKeySet<Long>()
 
     private val _liveMetrics = MutableStateFlow<Map<Long, DownloadLiveMetrics>>(emptyMap())
@@ -204,9 +205,11 @@ class DownloadEngine(
 
     suspend fun startDownload(downloadId: Long, bypassResumeCheck: Boolean = false) {
         sessionMutex.withLock {
-            if (activeSessions.containsKey(downloadId)) return
+            if (activeSessions.containsKey(downloadId) || startingDownloadIds.contains(downloadId)) return
             val existing = repository.getDownload(downloadId) ?: return
             if (existing.status == DownloadStatus.COMPLETED) return
+
+            startingDownloadIds.add(downloadId)
 
             // Ensure active multi-network leases are up before probing/downloading
             networkManager.acquireBondingLeases()
@@ -215,13 +218,17 @@ class DownloadEngine(
             onActiveDownloadsChanged?.invoke(true)
 
             val job = scope.launch {
-                runDownloadSession(downloadId, bypassResumeCheck)
+                try {
+                    runDownloadSession(downloadId, bypassResumeCheck)
+                } finally {
+                    startingDownloadIds.remove(downloadId)
+                }
             }
-            // Placeholder supervisor registration happens inside runDownloadSession once initialized
             job.invokeOnCompletion {
+                startingDownloadIds.remove(downloadId)
                 scope.launch {
                     evaluateQueue()
-                    if (activeSessions.isEmpty()) {
+                    if (!hasActiveDownloads()) {
                         onActiveDownloadsChanged?.invoke(false)
                     }
                 }
@@ -230,6 +237,7 @@ class DownloadEngine(
     }
 
     suspend fun pauseDownload(downloadId: Long) {
+        startingDownloadIds.remove(downloadId)
         val session = activeSessions[downloadId]
         if (session != null) {
             session.pauseRequested.set(true)
@@ -240,7 +248,7 @@ class DownloadEngine(
         repository.updateStatus(downloadId, DownloadStatus.PAUSED, null)
         manualBypassIds.remove(downloadId)
         removeMetricsFor(downloadId)
-        if (activeSessions.isEmpty()) {
+        if (!hasActiveDownloads()) {
             onActiveDownloadsChanged?.invoke(false)
         }
         evaluateQueue()
@@ -959,7 +967,7 @@ class DownloadEngine(
         }
     }
 
-    fun hasActiveDownloads(): Boolean = activeSessions.isNotEmpty()
+    fun hasActiveDownloads(): Boolean = activeSessions.isNotEmpty() || startingDownloadIds.isNotEmpty()
 
     companion object {
         const val DEFAULT_STALL_TIMEOUT_MS = 15_000L

@@ -37,8 +37,12 @@ class DownloadForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
 
+    @Volatile
+    private var isInForeground = false
+
     override fun onCreate() {
         super.onCreate()
+        isServiceRunning = true
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannels()
 
@@ -57,6 +61,15 @@ class DownloadForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val app = application as PlexoApplication
+
+        // Satisfy Android's startForegroundService() contract synchronously on EVERY entry path
+        // before any branch can stop the service.
+        if (!isInForeground) {
+            startForegroundSafe(
+                buildOngoingNotification(app.downloadEngine.liveMetrics.value, speedMbps = false)
+            )
+        }
+
         when (intent?.action) {
             ACTION_PAUSE_ALL -> {
                 serviceScope.launch {
@@ -67,7 +80,6 @@ class DownloadForegroundService : Service() {
             }
             ACTION_RESUME_ALL -> {
                 acquireLocks()
-                startForegroundSafe(buildOngoingNotification(emptyMap(), speedMbps = false))
                 serviceScope.launch {
                     app.downloadEngine.resumeAll()
                 }
@@ -88,7 +100,6 @@ class DownloadForegroundService : Service() {
             }
             else -> {
                 acquireLocks()
-                startForegroundSafe(buildOngoingNotification(app.downloadEngine.liveMetrics.value, speedMbps = false))
                 return START_STICKY
             }
         }
@@ -97,6 +108,8 @@ class DownloadForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        isServiceRunning = false
+        isInForeground = false
         releaseLocks()
         serviceScope.cancel()
         super.onDestroy()
@@ -112,17 +125,20 @@ class DownloadForegroundService : Service() {
         } else {
             startForeground(NOTIFICATION_ID_ONGOING, notification)
         }
+        isInForeground = true
     }
 
     private suspend fun updateOngoingNotification(metricsMap: Map<Long, DownloadLiveMetrics>) {
+        // Wait until onStartCommand() has promoted the service to foreground before stopping or notifying
+        if (!isInForeground) return
+
+        val app = application as PlexoApplication
         if (metricsMap.isEmpty()) {
-            val app = application as PlexoApplication
             if (!app.downloadEngine.hasActiveDownloads()) {
                 releaseLocksAndStop()
             }
             return
         }
-        val app = application as PlexoApplication
         val settings = app.settingsRepository.getCurrentSettings()
         val notification = buildOngoingNotification(metricsMap, settings.speedUnitMbps)
         notificationManager.notify(NOTIFICATION_ID_ONGOING, notification)
@@ -326,6 +342,9 @@ class DownloadForegroundService : Service() {
         const val ACTION_CANCEL_ALL = "com.example.action.CANCEL_ALL"
         const val ACTION_STOP_IF_IDLE = "com.example.action.STOP_IF_IDLE"
 
+        @Volatile
+        private var isServiceRunning = false
+
         fun ensureStarted(context: Context) {
             val intent = Intent(context, DownloadForegroundService::class.java).setAction(ACTION_START)
             try {
@@ -340,6 +359,7 @@ class DownloadForegroundService : Service() {
         }
 
         fun stopIfIdle(context: Context) {
+            if (!isServiceRunning) return
             runCatching {
                 val intent = Intent(context, DownloadForegroundService::class.java).setAction(ACTION_STOP_IF_IDLE)
                 context.startService(intent)
